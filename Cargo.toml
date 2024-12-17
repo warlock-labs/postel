@@ -3,12 +3,12 @@ authors = ["0xAlcibiades <alcibiades@warlock.xyz>"]
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "High level server for hyper and tower."
 edition = "2021"
-homepage = "https://github.com/warlock-labs/hyper-server"
+homepage = "https://github.com/warlock-labs/postel"
 keywords = ["tcp", "tls", "http", "hyper", "tokio"]
 license = "MIT"
-name = "hyper-server"
+name = "postel"
 readme = "README.md"
-repository = "https://github.com/valorem-labs-inc/hyper-server"
+repository = "https://github.com/warlock-labs/postel"
 version = "0.7.0"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]

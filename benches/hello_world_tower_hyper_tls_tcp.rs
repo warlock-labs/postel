@@ -1,19 +1,19 @@
-//! Hello World Benchmark for hyper-server
+//! Hello World Benchmark for postel
 //!
-//! This module implements a comprehensive benchmark for the hyper-server crate,
+//! This module implements a comprehensive benchmark for the postel crate,
 //! testing its performance in various scenarios including latency, throughput,
 //! and concurrent requests.
 //!
 //! It uses a very basic echo service that responds with "Hello, World!" to GET requests
 //! and echoes back the request body for POST requests. The server is configured with
 //! an optimized ECDSA certificate and various TLS performance improvements.
-//! It exercises the full stack from Socket → TCP → TLS → HTTP/2 → hyper-server → tower-service.
+//! It exercises the full stack from Socket → TCP → TLS → HTTP/2 → postel → tower-service.
 //! This allows developers of the library to optimize the full stack for performance.
 //! The library provides a detailed benchmark report with latency, throughput, and
 //! concurrency stress tests.
 //! It additionally has provision to generate flamegraphs for each benchmark run.
 //!
-//! For developers who use hyper-server, this provides a good starting point to
+//! For developers who use postel, this provides a good starting point to
 //! understand the performance of the library
 //! and how to use it optimally in their applications.
 

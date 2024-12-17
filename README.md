@@ -1,4 +1,4 @@
-# hyper-server
+# postel
 
 [![License](https://img.shields.io/crates/l/hyper-server)](https://choosealicense.com/licenses/mit/)
 [![Crates.io](https://img.shields.io/crates/v/hyper-server)](https://crates.io/crates/hyper-server)
@@ -27,12 +27,12 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-hyper-server = "0.7.0"
+postel = "0.7.0"
 ```
 
 ## Usage
 
-Here's an example of how to use hyper-server with a simple tower lambda service via TCP/TLS/HTTP2 transport:
+Here's an example of how to use postel with a simple tower lambda service via TCP/TLS/HTTP2 transport:
 
 ```rust
 use std::convert::Infallible;
@@ -174,7 +174,7 @@ the [examples directory](/examples).
 
 ## Architecture
 
-hyper-server provides a layered, composable architecture:
+postel provides a layered, composable architecture:
 
 1. TCP Listening: `tokio::net::TcpListener`
 2. TLS (optional): `rustls::TlsAcceptor`
@@ -189,7 +189,7 @@ maximum flexibility for your specific use case.
 
 ## Security
 
-hyper-server takes security seriously. We use `rustls` for TLS support, which
+postel takes security seriously. We use `rustls` for TLS support, which
 provides modern, secure defaults. However, please ensure that you configure
 your server appropriately for your use case, especially when deploying in
 production environments.
@@ -203,11 +203,11 @@ For detailed API documentation, please refer to the [API docs on docs.rs](https:
 
 ## Minimum Supported Rust Version
 
-hyper-server's MSRV is `1.80`.
+postel's MSRV is `1.80`.
 
 ## Contributing
 
-We welcome contributions to hyper-server! Our contributing guidelines are
+We welcome contributions to postel! Our contributing guidelines are
 inspired by the Rule of St. Benedict, emphasizing humility, listening,
 and community. Before contributing, please familiarize yourself with these
 principles at [The Rule of St. Benedict](http://www.benedictfriend.org/the-rule.html).
