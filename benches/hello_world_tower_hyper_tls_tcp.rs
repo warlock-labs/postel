@@ -43,7 +43,7 @@ use tokio::time::{Duration, Instant};
 use tokio_stream::wrappers::TcpListenerStream;
 use tracing::info;
 
-use hyper_server::serve_http_with_shutdown;
+use postel::serve_http_with_shutdown;
 
 /// Profiling module for generating flamegraphs during benchmarks
 ///
@@ -69,7 +69,7 @@ mod profiling {
         active_profiler: Option<ProfilerGuard<'a>>,
     }
 
-    impl<'a> FlamegraphProfiler<'a> {
+    impl FlamegraphProfiler<'_> {
         /// Creates a new `FlamegraphProfiler` instance
         ///
         /// # Arguments
@@ -87,7 +87,7 @@ mod profiling {
         }
     }
 
-    impl<'a> Profiler for FlamegraphProfiler<'a> {
+    impl Profiler for FlamegraphProfiler<'_> {
         /// Starts profiling for a benchmark
         ///
         /// This method is called by Criterion at the start of each benchmark iteration.

@@ -221,7 +221,7 @@ pub async fn serve_http_connection<B, IO, S, E>(
 /// use tower::ServiceBuilder;
 /// use std::net::SocketAddr;
 ///
-/// use hyper_server::serve_http_with_shutdown;
+/// use postel::serve_http_with_shutdown;
 ///
 /// async fn hello(_: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
 ///     Ok(Response::new(Full::new(Bytes::from("Hello, World!"))))
@@ -278,7 +278,7 @@ pub async fn serve_http_connection<B, IO, S, E>(
 /// use std::net::SocketAddr;
 /// use std::future::Future;
 ///
-/// use hyper_server::{serve_http_with_shutdown, load_certs, load_private_key};
+/// use postel::{serve_http_with_shutdown, load_certs, load_private_key};
 ///
 /// async fn hello(_: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
 ///     Ok(Response::new(Full::new(Bytes::from("Hello, World!"))))
@@ -336,7 +336,7 @@ pub async fn serve_http_connection<B, IO, S, E>(
 /// use std::net::SocketAddr;
 /// use std::future::Future;
 ///
-/// use hyper_server::{serve_http_with_shutdown, load_certs, load_private_key};
+/// use postel::{serve_http_with_shutdown, load_certs, load_private_key};
 ///
 /// async fn hello(_: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
 ///     Ok(Response::new(Full::new(Bytes::from("Hello, World!"))))
