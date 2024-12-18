@@ -115,11 +115,13 @@ mod tests {
     use rustls::{ClientConfig, ServerConfig};
     use std::net::SocketAddr;
     use std::sync::Arc;
+    use once_cell::sync::Lazy;
     use tokio::io::{AsyncRead, AsyncWrite};
     use tokio::net::{TcpListener, TcpStream};
     use tokio_rustls::TlsAcceptor;
     use tokio_stream::wrappers::TcpListenerStream;
     use tracing::{debug, error, info, warn};
+    use crate::test::RUSTLS;
 
     // Helper function to create a TLS acceptor for testing
     async fn create_test_tls_acceptor() -> io::Result<TlsAcceptor> {
@@ -140,6 +142,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_tls_incoming_success() -> Result<(), Box<dyn std::error::Error>> {
+        Lazy::force(&RUSTLS);
+
         let _guard = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .try_init();
@@ -197,6 +201,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_tls_incoming_invalid_cert() -> Result<(), Box<dyn std::error::Error>> {
+        Lazy::force(&RUSTLS);
+
         let _guard = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .try_init();
@@ -278,6 +284,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_tls_incoming_client_hello_timeout() -> Result<(), Box<dyn std::error::Error>> {
+        Lazy::force(&RUSTLS);
+
         let _guard = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .try_init();

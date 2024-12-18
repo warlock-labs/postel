@@ -790,7 +790,9 @@ mod tests {
     // HTTPS Tests
 
     mod https_tests {
+        use once_cell::sync::Lazy;
         use super::*;
+        use crate::test::RUSTLS;
 
         async fn create_https_client() -> (
             tokio_rustls::TlsConnector,
@@ -812,6 +814,8 @@ mod tests {
 
         #[tokio::test]
         async fn test_https_connection() {
+            Lazy::force(&RUSTLS);
+
             let addr = SocketAddr::from(([127, 0, 0, 1], 0));
             let (incoming, server_addr) = setup_test_server(addr).await;
 
@@ -865,6 +869,8 @@ mod tests {
 
         #[tokio::test]
         async fn test_https_invalid_client_cert() {
+            Lazy::force(&RUSTLS);
+
             let addr = SocketAddr::from(([127, 0, 0, 1], 0));
             let (incoming, server_addr) = setup_test_server(addr).await;
 
@@ -905,6 +911,8 @@ mod tests {
         }
         #[tokio::test]
         async fn test_https_graceful_shutdown() {
+            Lazy::force(&RUSTLS);
+
             let addr = SocketAddr::from(([127, 0, 0, 1], 0));
             let (incoming, server_addr) = setup_test_server(addr).await;
 

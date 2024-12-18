@@ -19,5 +19,6 @@ mod http;
 mod io;
 mod tcp;
 mod tls;
+mod test;
 
 pub(crate) type Error = Box<dyn std::error::Error + Send + Sync>;
