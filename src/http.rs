@@ -790,9 +790,9 @@ mod tests {
     // HTTPS Tests
 
     mod https_tests {
-        use once_cell::sync::Lazy;
         use super::*;
-        use crate::test::RUSTLS;
+        use crate::test::helper::RUSTLS;
+        use once_cell::sync::Lazy;
 
         async fn create_https_client() -> (
             tokio_rustls::TlsConnector,
