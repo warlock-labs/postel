@@ -372,7 +372,7 @@ fn bench_server(c: &mut Criterion) {
         .build()
         .expect("Failed to build URI");
 
-    let mut group = c.benchmark_group("hyper_server");
+    let mut group = c.benchmark_group("postel");
     group.sample_size(20);
     group.measurement_time(Duration::from_secs(30));
 
