@@ -16,7 +16,7 @@ use tokio_stream::wrappers::TcpListenerStream;
 use tower::{Layer, ServiceBuilder};
 use tracing::{debug, info, trace};
 
-use hyper_server::{load_certs, load_private_key, serve_http_with_shutdown};
+use postel::{load_certs, load_private_key, serve_http_with_shutdown};
 
 // Define a simple service that responds with "Hello, World!"
 async fn hello(_: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {

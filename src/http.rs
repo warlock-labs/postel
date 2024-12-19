@@ -221,7 +221,7 @@ pub async fn serve_http_connection<B, IO, S, E>(
 /// use tower::ServiceBuilder;
 /// use std::net::SocketAddr;
 ///
-/// use hyper_server::serve_http_with_shutdown;
+/// use postel::serve_http_with_shutdown;
 ///
 /// async fn hello(_: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
 ///     Ok(Response::new(Full::new(Bytes::from("Hello, World!"))))
@@ -278,7 +278,7 @@ pub async fn serve_http_connection<B, IO, S, E>(
 /// use std::net::SocketAddr;
 /// use std::future::Future;
 ///
-/// use hyper_server::{serve_http_with_shutdown, load_certs, load_private_key};
+/// use postel::{serve_http_with_shutdown, load_certs, load_private_key};
 ///
 /// async fn hello(_: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
 ///     Ok(Response::new(Full::new(Bytes::from("Hello, World!"))))
@@ -336,7 +336,7 @@ pub async fn serve_http_connection<B, IO, S, E>(
 /// use std::net::SocketAddr;
 /// use std::future::Future;
 ///
-/// use hyper_server::{serve_http_with_shutdown, load_certs, load_private_key};
+/// use postel::{serve_http_with_shutdown, load_certs, load_private_key};
 ///
 /// async fn hello(_: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
 ///     Ok(Response::new(Full::new(Bytes::from("Hello, World!"))))
@@ -791,6 +791,8 @@ mod tests {
 
     mod https_tests {
         use super::*;
+        use crate::test::helper::RUSTLS;
+        use once_cell::sync::Lazy;
 
         async fn create_https_client() -> (
             tokio_rustls::TlsConnector,
@@ -812,6 +814,8 @@ mod tests {
 
         #[tokio::test]
         async fn test_https_connection() {
+            Lazy::force(&RUSTLS);
+
             let addr = SocketAddr::from(([127, 0, 0, 1], 0));
             let (incoming, server_addr) = setup_test_server(addr).await;
 
@@ -865,6 +869,8 @@ mod tests {
 
         #[tokio::test]
         async fn test_https_invalid_client_cert() {
+            Lazy::force(&RUSTLS);
+
             let addr = SocketAddr::from(([127, 0, 0, 1], 0));
             let (incoming, server_addr) = setup_test_server(addr).await;
 
@@ -905,6 +911,8 @@ mod tests {
         }
         #[tokio::test]
         async fn test_https_graceful_shutdown() {
+            Lazy::force(&RUSTLS);
+
             let addr = SocketAddr::from(([127, 0, 0, 1], 0));
             let (incoming, server_addr) = setup_test_server(addr).await;
 

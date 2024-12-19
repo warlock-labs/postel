@@ -110,7 +110,9 @@ pub fn load_private_key(filename: &str) -> io::Result<PrivateKeyDer<'static>> {
 mod tests {
     use super::*;
     use crate::tcp::serve_tcp_incoming;
+    use crate::test::helper::RUSTLS;
     use futures::StreamExt;
+    use once_cell::sync::Lazy;
     use rustls::pki_types::{CertificateDer, ServerName};
     use rustls::{ClientConfig, ServerConfig};
     use std::net::SocketAddr;
@@ -140,6 +142,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_tls_incoming_success() -> Result<(), Box<dyn std::error::Error>> {
+        Lazy::force(&RUSTLS);
+
         let _guard = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .try_init();
@@ -197,6 +201,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_tls_incoming_invalid_cert() -> Result<(), Box<dyn std::error::Error>> {
+        Lazy::force(&RUSTLS);
+
         let _guard = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .try_init();
@@ -278,6 +284,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_tls_incoming_client_hello_timeout() -> Result<(), Box<dyn std::error::Error>> {
+        Lazy::force(&RUSTLS);
+
         let _guard = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .try_init();
