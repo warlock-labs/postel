@@ -340,24 +340,37 @@ fn bench_server(c: &mut Criterion) {
 
         let https = HttpsConnectorBuilder::new()
             .with_tls_config(tls_config.client_config)
-            .https_or_http()
-            .enable_all_versions()
+            .https_only()
+            .enable_http2()
             .build();
 
         let client = Client::builder(TokioExecutor::new())
             // HTTP/2 settings
-            .http2_only(true) // Force HTTP/2 for consistent benchmarking and to match server config
-            .http2_initial_stream_window_size(2 * 1024 * 1024) // 2MB, matches server setting for better flow control
-            .http2_initial_connection_window_size(4 * 1024 * 1024) // 4MB, matches server setting for improved throughput
-            .http2_adaptive_window(true) // Enable dynamic flow control to optimize performance under varying conditions
-            .http2_max_frame_size(32 * 1024) // 32KB, matches server setting for larger data chunks
-            .http2_keep_alive_interval(Duration::from_secs(10)) // Maintain connection health, matching server's 10-second interval
-            .http2_keep_alive_timeout(Duration::from_secs(30)) // Allow time for keep-alive response, matching server's 30-second timeout
-            .http2_max_concurrent_reset_streams(2000) // Match server's max concurrent streams for better parallelism
-            .http2_max_send_buf_size(2 * 1024 * 1024) // 2MB, matches server setting for improved write performance
+            .http2_only(true)
+            // Ensures all connections use HTTP/2 protocol
+            .http2_initial_stream_window_size(4 * 1024 * 1024)
+            // Sets initial HTTP/2 stream flow control window to 4MB
+            .http2_initial_connection_window_size(8 * 1024 * 1024)
+            // Sets initial HTTP/2 connection flow control window to 8MB
+            .http2_adaptive_window(true)
+            // Enables dynamic adjustment of flow control window based on network conditions
+            .http2_max_frame_size(1024 * 1024)
+            // Sets maximum HTTP/2 frame size to 1MB
+            .http2_keep_alive_interval(Duration::from_secs(30))
+            // Sends keep-alive pings every 30 seconds
+            .http2_keep_alive_timeout(Duration::from_secs(60))
+            // Allows 60 seconds for keep-alive responses before timing out
+            .http2_max_concurrent_reset_streams(250)
+            // Limits the number of concurrent streams per connection to 250
+            .http2_max_send_buf_size(4 * 1024 * 1024)
+            // Sets maximum send buffer size to 4MB
             // Connection pooling settings
-            .pool_idle_timeout(Duration::from_secs(90)) // Keep connections alive longer for reuse in benchmarks
-            .pool_max_idle_per_host(2000) // Match max concurrent streams to fully utilize HTTP/2 multiplexing
+            .pool_idle_timeout(Duration::from_secs(60))
+            // Keeps idle connections alive for 60 seconds
+            .pool_max_idle_per_host(32)
+            // Sets maximum number of idle connections per host to 32
+            // This is key, you have a lot of pain in store at runtime if you
+            // don't set these.
             .timer(TokioTimer::new())
             .pool_timer(TokioTimer::new())
             .build(https);
