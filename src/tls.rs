@@ -51,7 +51,7 @@ use crate::Error as TransportError;
 /// use tokio::net::TcpListener;
 /// use tokio_rustls::TlsAcceptor;
 /// use std::sync::Arc;///
-/// use hyper_server::{serve_tcp_incoming, serve_tls_incoming};
+/// use postel::{serve_tcp_incoming, serve_tls_incoming};
 ///
 /// async fn run_tls_server(tls_config: Arc<rustls::ServerConfig>) {
 ///     let addr = SocketAddr::from(([127, 0, 0, 1], 8443));
@@ -175,13 +175,9 @@ mod tests {
     use std::sync::Arc;
 
     use futures::StreamExt;
+    use once_cell::sync::Lazy;
     use rcgen::{CertificateParams, DistinguishedName, KeyPair};
     use rustls::pki_types::PrivatePkcs8KeyDer;
-    use super::*;
-    use crate::tcp::serve_tcp_incoming;
-    use crate::test::helper::RUSTLS;
-    use futures::StreamExt;
-    use once_cell::sync::Lazy;
     use rustls::pki_types::{CertificateDer, ServerName};
     use rustls::RootCertStore;
     use rustls::{ClientConfig, ServerConfig};
@@ -191,6 +187,7 @@ mod tests {
     use tracing::{debug, error, info, warn};
 
     use crate::tcp::serve_tcp_incoming;
+    use crate::test::helper::RUSTLS;
 
     use super::*;
 
@@ -243,16 +240,6 @@ mod tests {
         TlsConfig {
             server_config,
             client_config,
-        }
-    }
-
-    fn init_crypto_provider() {
-        match rustls::crypto::aws_lc_rs::default_provider().install_default() {
-            Ok(_) => debug!("Default crypto provider installed successfully"),
-            Err(_) => {
-                // Crypto provider already installed
-                debug!("Crypto provider already installed");
-            }
         }
     }
 
@@ -315,7 +302,7 @@ mod tests {
     #[tokio::test]
     async fn test_tls_incoming_invalid_cert() -> Result<(), Box<dyn std::error::Error>> {
         Lazy::force(&RUSTLS);
-      
+
         let _guard = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .try_init();

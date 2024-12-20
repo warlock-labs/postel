@@ -41,7 +41,7 @@ use tokio_stream::{Stream, StreamExt};
 /// use std::net::SocketAddr;
 /// use tokio::net::TcpListener;
 /// use tokio_stream::wrappers::TcpListenerStream;
-/// use hyper_server::serve_tcp_incoming;
+/// use postel::serve_tcp_incoming;
 ///
 /// #[tokio::main]
 /// async fn main() {

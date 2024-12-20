@@ -564,18 +564,6 @@ mod tests {
     use tokio::sync::oneshot;
     use tokio_stream::wrappers::TcpListenerStream;
 
-    // Utility functions
-
-    fn init_crypto_provider() {
-        // This and some other helper functions need a bit of DRY
-        match rustls::crypto::aws_lc_rs::default_provider().install_default() {
-            Ok(_) => debug!("Default crypto provider installed successfully"),
-            Err(_) => {
-                // Crypto provider is already installed
-            }
-        }
-    }
-
     async fn echo(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::Error> {
         match (req.method(), req.uri().path()) {
             (&hyper::Method::GET, "/") => {
@@ -876,7 +864,7 @@ mod tests {
         #[tokio::test]
         async fn test_https_invalid_client_cert() {
             Lazy::force(&RUSTLS);
-          
+
             let addr = SocketAddr::from(([127, 0, 0, 1], 0));
             let (incoming, server_addr) = setup_test_server(addr).await;
 
@@ -918,7 +906,7 @@ mod tests {
         #[tokio::test]
         async fn test_https_graceful_shutdown() {
             Lazy::force(&RUSTLS);
-          
+
             let addr = SocketAddr::from(([127, 0, 0, 1], 0));
             let (incoming, server_addr) = setup_test_server(addr).await;
 

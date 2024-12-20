@@ -15,39 +15,39 @@ version = "0.7.1"
 tikv-jemallocator = { version = "0.6", optional = true }
 
 [dependencies]
-async-stream = "0.3.5"
-bytes = "1.7.1"
-futures = "0.3.30"
-http = "1.1.0"
+async-stream = "0.3.6"
+bytes = "1.9.0"
+futures = "0.3.31"
+http = "1.2.0"
 http-body = "1.0.1"
 http-body-util = "0.1.2"
-hyper = "1.4.1"
-hyper-util = { version = "0.1.8", features = ["server", "tokio", "server-auto", "server-graceful", "service", "http2"] }
-pin-project = "1.1.5"
+hyper = "1.5.2"
+hyper-util = { version = "0.1.10", features = ["server", "tokio", "server-auto", "server-graceful", "service", "http2"] }
+pin-project = "1.1.7"
 pprof = { version = "0.13.0", features = ["flamegraph"], optional = true }
 ring = "0.17.8"
-rustls = { version = "0.23.13", features = ["zlib", "aws_lc_rs"] }
-rustls-pemfile = "2.1.3"
-tokio = { version = "1.40.0", features = ["net", "macros", "rt-multi-thread", "time"] }
-tokio-rustls = { version = "0.26.0", features = ["aws_lc_rs"] }
-tokio-stream = { version = "0.1.16", features = ["net"] }
-tokio-util = "0.7.12"
-tower = { version = "0.5.1", features = ["util"] }
-tracing = "0.1.40"
+rustls = { version = "0.23.20", features = ["zlib", "aws_lc_rs"] }
+rustls-pemfile = "2.2.0"
+tokio = { version = "1.42.0", features = ["net", "macros", "rt-multi-thread", "time"] }
+tokio-rustls = { version = "0.26.1", features = ["aws_lc_rs"] }
+tokio-stream = { version = "0.1.17", features = ["net"] }
+tokio-util = "0.7.13"
+tower = { version = "0.5.2", features = ["util"] }
+tracing = "0.1.41"
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports", "async_tokio"] }
-hyper = { version = "1.4.1", features = ["client"] }
-hyper-rustls = { version = "0.27.3", features = ["http1", "http2"] }
-hyper-util = { version = "0.1.8", features = ["client", "client-legacy", "http2"] }
+hyper = { version = "1.5.2", features = ["client"] }
+hyper-rustls = { version = "0.27.5", features = ["http1", "http2"] }
+hyper-util = { version = "0.1.10", features = ["client", "client-legacy", "http2"] }
 num_cpus = "1.16.0"
-rcgen = "0.13.1"
-reqwest = { version = "0.12.7", features = ["rustls-tls", "http2"] }
-ring = "0.17.8"
-tokio = { version = "1.40", features = ["rt-multi-thread", "net", "test-util", "time"] }
-tokio-util = { version = "0.7.12", features = ["compat"] }
-tracing-subscriber = "0.3.18"
 once_cell = "1.20.2"
+rcgen = "0.13.1"
+reqwest = { version = "0.12.9", features = ["rustls-tls", "http2"] }
+ring = "0.17.8"
+tokio = { version = "1.42", features = ["rt-multi-thread", "net", "test-util", "time"] }
+tokio-util = { version = "0.7.13", features = ["compat"] }
+tracing-subscriber = "0.3.19"
 
 [[bench]]
 name = "hello_world_tower_hyper_tls_tcp"
