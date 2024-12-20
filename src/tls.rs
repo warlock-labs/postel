@@ -177,6 +177,11 @@ mod tests {
     use futures::StreamExt;
     use rcgen::{CertificateParams, DistinguishedName, KeyPair};
     use rustls::pki_types::PrivatePkcs8KeyDer;
+    use super::*;
+    use crate::tcp::serve_tcp_incoming;
+    use crate::test::helper::RUSTLS;
+    use futures::StreamExt;
+    use once_cell::sync::Lazy;
     use rustls::pki_types::{CertificateDer, ServerName};
     use rustls::RootCertStore;
     use rustls::{ClientConfig, ServerConfig};
@@ -263,7 +268,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_tls_incoming_success() -> Result<(), Box<dyn std::error::Error>> {
-        init_crypto_provider();
+        Lazy::force(&RUSTLS);
         let _guard = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .try_init();
@@ -309,7 +314,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_tls_incoming_invalid_cert() -> Result<(), Box<dyn std::error::Error>> {
-        init_crypto_provider();
+        Lazy::force(&RUSTLS);
+      
         let _guard = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .try_init();
@@ -372,7 +378,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_tls_incoming_client_hello_timeout() -> Result<(), Box<dyn std::error::Error>> {
-        init_crypto_provider();
+        Lazy::force(&RUSTLS);
+
         let _guard = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::DEBUG)
             .try_init();
