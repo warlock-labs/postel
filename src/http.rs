@@ -91,7 +91,6 @@ pub async fn serve_http_connection<B, IO, S, E>(
     // this builder doesn't have a way to convert back to a builder
     // once you start building.
 
-    // Configure the builder
     let mut builder = builder.clone();
     builder
         // HTTP/1 settings
@@ -100,9 +99,9 @@ pub async fn serve_http_connection<B, IO, S, E>(
         .half_close(true)
         // Enable keep-alive to reduce overhead for multiple requests
         .keep_alive(true)
-        // Increase max buffer size to 256KB for better performance with larger payloads
-        .max_buf_size(256 * 1024)
-        // Enable immediate flushing of pipelined responses
+        // Increase max buffer size to 1MB for better performance with larger payloads
+        .max_buf_size(1024 * 1024)
+        // Enable immediate flushing of pipelined responses for lower latency
         .pipeline_flush(true)
         // Preserve original header case for compatibility
         .preserve_header_case(true)
@@ -110,31 +109,28 @@ pub async fn serve_http_connection<B, IO, S, E>(
         .title_case_headers(false)
         // HTTP/2 settings
         .http2()
-        // Add the timer to the builder
-        // This will cause you all sorts of pain otherwise
-        // https://github.com/seanmonstar/reqwest/issues/2421
-        // https://github.com/rustls/hyper-rustls/issues/287
+        // Add the timer to the builder to avoid potential issues
         .timer(TokioTimer::new())
-        // Increase initial stream window size to 2MB for better throughput
-        .initial_stream_window_size(Some(2 * 1024 * 1024))
-        // Increase initial connection window size to 4MB for improved performance
-        .initial_connection_window_size(Some(4 * 1024 * 1024))
+        // Increase initial stream window size to 4MB for better throughput
+        .initial_stream_window_size(Some(4 * 1024 * 1024))
+        // Increase initial connection window size to 8MB for improved performance
+        .initial_connection_window_size(Some(8 * 1024 * 1024))
         // Enable adaptive window for dynamic flow control
         .adaptive_window(true)
-        // Increase max frame size to 32KB for larger data chunks
-        .max_frame_size(Some(32 * 1024))
-        // Allow up to 2000 concurrent streams for better parallelism
-        .max_concurrent_streams(Some(2000))
-        // Increase max send buffer size to 2MB for improved write performance
-        .max_send_buf_size(2 * 1024 * 1024)
+        // Increase max frame size to 1MB for larger data chunks
+        .max_frame_size(Some(1024 * 1024))
+        // Allow up to 250 concurrent streams for better parallelism without overwhelming the connection
+        .max_concurrent_streams(Some(250))
+        // Increase max send buffer size to 4MB for improved write performance
+        .max_send_buf_size(4 * 1024 * 1024)
         // Enable CONNECT protocol support for proxying and tunneling
         .enable_connect_protocol()
-        // Increase max header list size to 32KB to handle larger headers
-        .max_header_list_size(32 * 1024)
-        // Set keep-alive interval to 10 seconds for more responsive connection management
-        .keep_alive_interval(Some(Duration::from_secs(10)))
-        // Set keep-alive timeout to 30 seconds to balance connection reuse and resource conservation
-        .keep_alive_timeout(Duration::from_secs(30));
+        // Increase max header list size to 64KB to handle larger headers
+        .max_header_list_size(64 * 1024)
+        // Set keep-alive interval to 30 seconds for more responsive connection management
+        .keep_alive_interval(Some(Duration::from_secs(30)))
+        // Set keep-alive timeout to 60 seconds to balance connection reuse and resource conservation
+        .keep_alive_timeout(Duration::from_secs(60));
 
     // Create and pin the HTTP connection
     //
@@ -567,8 +563,6 @@ mod tests {
     use tokio::net::{TcpListener, TcpStream};
     use tokio::sync::oneshot;
     use tokio_stream::wrappers::TcpListenerStream;
-
-    // Utility functions
 
     async fn echo(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::Error> {
         match (req.method(), req.uri().path()) {

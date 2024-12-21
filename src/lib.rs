@@ -1,3 +1,5 @@
+// Optional alternative to the default global allocator.
+// faster in some scenarios, but not always.
 #[cfg(all(feature = "jemalloc", not(target_env = "msvc")))]
 use tikv_jemallocator::Jemalloc;
 
