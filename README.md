@@ -4,7 +4,7 @@
 [![Crates.io](https://img.shields.io/crates/v/hyper-server)](https://crates.io/crates/hyper-server)
 [![Docs](https://img.shields.io/crates/v/hyper-server?color=blue&label=docs)](https://docs.rs/hyper-server/)
 ![CI](https://github.com/warlock-labs/hyper-server/actions/workflows/CI.yml/badge.svg)
-[![codecov](https://codecov.io/gh/warlock-labs/hyper-server/branch/master/graph/badge.svg?token=8W5MEJQSW6)](https://codecov.io/gh/warlock-labs/hyper-server)
+[![codecov](https://codecov.io/gh/warlock-labs/postel/graph/badge.svg?token=kd22mPKFAL)](https://codecov.io/gh/warlock-labs/postel)
 
 A high-performance, modular server implementation built on [hyper], designed to
 work seamlessly with [axum], [tonic], [tower], and other tower-compatible
