@@ -71,8 +71,9 @@ where
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8443));
     // 1. Set up the TCP listener
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8443));
+
     let listener = TcpListener::bind(addr).await?;
     info!("Listening on https://{}", addr);
     let incoming = TcpListenerStream::new(listener);
@@ -90,6 +91,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let svc = TowerToHyperService::new(svc);
 
     // 5. Set up TLS config
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     let certs = load_certs("examples/sample.pem")?;
     let key = load_private_key("examples/sample.rsa")?;
 
@@ -97,6 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .with_no_client_auth()
         .with_single_cert(certs, key)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
     config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec(), b"http/1.0".to_vec()];
     let tls_config = Arc::new(config);
 

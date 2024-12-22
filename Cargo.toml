@@ -45,13 +45,23 @@ once_cell = "1.20.2"
 rcgen = "0.13.1"
 reqwest = { version = "0.12.9", features = ["rustls-tls", "http2"] }
 ring = "0.17.8"
-tokio = { version = "1.42", features = ["rt-multi-thread", "net", "test-util", "time"] }
+tokio = { version = "1.42", features = ["rt-multi-thread", "net", "test-util", "time", "signal"] }
 tokio-util = { version = "0.7.13", features = ["compat"] }
+tonic = "0.12.3"
+tonic-health = "0.12.3"
 tracing-subscriber = "0.3.19"
 
 [[bench]]
 name = "hello_world_tower_hyper_tls_tcp"
 harness = false
+
+[[example]]
+name = "tower_service_fn"
+path = "examples/tower_service_fn.rs"
+
+[[example]]
+name = "tonic"
+path = "examples/tonic.rs"
 
 [features]
 default = []
