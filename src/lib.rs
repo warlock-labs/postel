@@ -1,4 +1,3 @@
-
 pub use error::{Error as TransportError, Kind as TransportErrorKind};
 pub use http::serve_http_connection;
 pub use http::serve_http_with_shutdown;

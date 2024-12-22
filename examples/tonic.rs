@@ -1,11 +1,6 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use bytes::Bytes;
-use http::Request;
-use http_body_util::{Full};
-use hyper::body::Incoming;
-use hyper::Response;
 use hyper_util::rt::TokioExecutor;
 use hyper_util::server::conn::auto::Builder as HttpConnectionBuilder;
 use hyper_util::service::TowerToHyperService;
@@ -13,9 +8,7 @@ use rustls::ServerConfig;
 use tokio::net::TcpListener;
 use tokio_stream::wrappers::TcpListenerStream;
 use tonic::server::NamedService;
-use tonic::service::AxumRouter;
 use tonic::transport::Server;
-use tower::ServiceExt;
 use tracing::{info, Level};
 
 use postel::{load_certs, load_private_key, serve_http_with_shutdown};
@@ -30,9 +23,7 @@ impl NamedService for GreeterService {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Initialize logging
-    tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
-        .init();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     // Configure server address
     let addr = SocketAddr::from(([127, 0, 0, 1], 8443));
@@ -72,13 +63,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let server = tokio::spawn(async move {
         info!("Server starting up...");
 
-        let svc = <AxumRouter as ServiceExt<Request<Incoming>>>::map_response::<_, Response<Full<Bytes>>>(Server::builder()
+        let svc = Server::builder()
             .add_service(health_service)
             .into_service()
-            .into_axum_router(), |res| {
-                // TODO the issue here is that streams are not sync
-                res.map(|_| Full::new(Bytes::from("placeholder")))
-            });
+            .into_axum_router();
 
         let hyper_svc = TowerToHyperService::new(svc);
 
@@ -92,8 +80,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 info!("Shutdown signal received");
             }),
         )
-            .await
-            .expect("Server failed unexpectedly");
+        .await
+        .expect("Server failed unexpectedly");
     });
 
     // Keep the main thread running until Ctrl+C
