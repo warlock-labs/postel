@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use bytes::Bytes;
-use futures::stream::{FuturesUnordered, StreamExt};
+use futures::stream::StreamExt;
 use http::{Request, Response};
 use http_body::Body;
 use hyper::body::Incoming;
@@ -366,7 +366,7 @@ where
     S::Error: Into<crate::Error>,
     ResBody: Body<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<crate::Error> + Send,
-    E: HttpServerConnExec<S::Future, ResBody> + Send + 'static,
+    E: HttpServerConnExec<S::Future, ResBody> + Send + Sync + 'static,
 {
     // Initialize shutdown signaling
     let (signal_tx, signal_rx) = tokio::sync::watch::channel(());
@@ -386,7 +386,6 @@ where
 
     // Pin the incoming stream to the stack
     let mut incoming = pin!(incoming);
-    let mut active_connections = FuturesUnordered::new();
 
     // Enter the main server loop
     loop {
@@ -400,51 +399,50 @@ where
                 break;
             },
             Some(io_result) = incoming.next() => {
-                let io = match io_result {
-                    Ok(io) => io,
-                    Err(e) => {
-                        trace!("error accepting connection: {:#}", e);
-                        continue;
-                    }
-                };
-
-                trace!("TCP streaming connection accepted");
-
                 let connection_service = service.clone();
                 let connection_builder = builder.clone();
                 let connection_signal_rx = graceful.then_some(signal_rx.clone());
+                let connection_tls_acceptor = tls_acceptor.clone();
 
-                let transport = if let Some(tls_acceptor) = &tls_acceptor {
-                    match accept_tls_connection(io, Arc::clone(tls_acceptor)).await {
-                        Ok(tls_stream) => Transport::new_tls(tls_stream),
-                        Err(e) => {
-                            // This connection failed to handshake
-                            debug!("TLS handshake failed: {:#}", e);
-                            continue;
-                        }
+                tokio::spawn(async move {
+                            let io = match io_result {
+                            Ok(io) => io,
+                            Err(e) => {
+                                trace!("error accepting connection: {:#}", e);
+                                return;
+                            }
+                        };
+
+                        trace!("TCP streaming connection accepted");
+
+                        let transport = if let Some(connection_tls_acceptor) = &connection_tls_acceptor {
+                            match accept_tls_connection(io, Arc::clone(connection_tls_acceptor)).await {
+                                Ok(tls_stream) => Transport::new_tls(tls_stream),
+                                Err(e) => {
+                                    // This connection failed to handshake
+                                    debug!("TLS handshake failed: {:#}", e);
+                                    return;
+                                }
+                            }
+                        } else {
+                            Transport::new_plain(io)
+                        };
+
+                        // Convert our abstracted tokio transport into a hyper transport
+                        let hyper_io = TokioIo::new(transport);
+
+
+                        // Create future for serving the connection
+                        serve_http_connection(
+                            hyper_io,
+                            connection_service,
+                            connection_builder,
+                            connection_signal_rx,
+                            None
+                        ).await;
                     }
-                } else {
-                    Transport::new_plain(io)
-                };
-
-                // Convert our abstracted tokio transport into a hyper transport
-                let hyper_io = TokioIo::new(transport);
-
-
-                // Create future for serving the connection
-                let conn_future = serve_http_connection(
-                    hyper_io,
-                    connection_service,
-                    connection_builder,
-                    connection_signal_rx,
-                    None
                 );
-
-                active_connections.push(conn_future);
             },
-            Some(_) = active_connections.next(), if !active_connections.is_empty() => {
-                trace!("Connection completed, {} active", active_connections.len());
-            }
         }
     }
 
@@ -458,12 +456,6 @@ where
             "waiting for {} connections to close",
             signal_tx.receiver_count()
         );
-
-        while !active_connections.is_empty() {
-            if active_connections.next().await.is_some() {
-                trace!("Connection closed during shutdown");
-            }
-        }
         signal_tx.closed().await;
     }
 
