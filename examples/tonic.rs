@@ -9,6 +9,7 @@ use tokio::net::TcpListener;
 use tokio_stream::wrappers::TcpListenerStream;
 use tonic::server::NamedService;
 use tonic::transport::Server;
+use tower::ServiceExt;
 use tracing::{info, Level};
 
 use postel::{load_certs, load_private_key, serve_http_with_shutdown};
@@ -23,10 +24,18 @@ impl NamedService for GreeterService {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Initialize logging
-    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    tracing_subscriber::fmt()
+        .with_max_level(Level::DEBUG)
+        .init();
 
     // Configure server address
     let addr = SocketAddr::from(([127, 0, 0, 1], 8443));
+
+    let reflection_server = tonic_reflection::server::Builder::configure()
+        .register_encoded_file_descriptor_set(tonic_health::pb::FILE_DESCRIPTOR_SET)
+        .register_encoded_file_descriptor_set(tonic_types::pb::FILE_DESCRIPTOR_SET)
+        .register_encoded_file_descriptor_set(tonic_reflection::pb::v1alpha::FILE_DESCRIPTOR_SET)
+        .build_v1alpha()?;
 
     // Set up gRPC health service
     let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
@@ -65,8 +74,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         let svc = Server::builder()
             .add_service(health_service)
+            .add_service(reflection_server)
             .into_service()
-            .into_axum_router();
+            .into_axum_router()
+            .into_service()
+            .boxed_clone();
 
         let hyper_svc = TowerToHyperService::new(svc);
 
