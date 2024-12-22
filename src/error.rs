@@ -58,7 +58,7 @@ pub(crate) fn handle_accept_error(e: impl Into<TransportError>) -> ControlFlow<T
 
 /// A type alias for the source of an error, which is a boxed trait object.
 /// This allows for dynamic dispatch and type erasure of the original error type.
-type Source = Box<dyn StdError + Send + Sync + 'static>;
+type Source = crate::Error;
 
 /// Represents errors that originate from the server.
 /// This struct provides a public API for error handling.
