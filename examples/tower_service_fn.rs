@@ -7,22 +7,25 @@ use bytes::Bytes;
 use http_body_util::Full;
 use hyper::body::Incoming;
 use hyper::{Request, Response};
-use hyper_util::rt::TokioExecutor;
+use hyper_util::rt::{TokioExecutor, TokioTimer};
 use hyper_util::server::conn::auto::Builder as HttpConnectionBuilder;
 use hyper_util::service::TowerToHyperService;
 use rustls::ServerConfig;
 use tokio::net::TcpListener;
 use tokio_stream::wrappers::TcpListenerStream;
 use tower::{Layer, ServiceBuilder};
-use tracing::{debug, info, trace};
+use tracing::{debug, info, trace, Level};
 
 use postel::{load_certs, load_private_key, serve_http_with_shutdown};
 
 // Define a simple service that responds with "Hello, World!"
-async fn hello(_: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
-    Ok(Response::new(Full::new(Bytes::from("Hello, World!"))))
+lazy_static::lazy_static! {
+    static ref HELLO: Bytes = Bytes::from("Hello, World!");
 }
 
+async fn hello(_: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
+    Ok(Response::new(Full::new(HELLO.clone()))) // Zero-copy clone
+}
 // Define a Custom middleware to add a header to all responses, for example
 struct AddHeaderLayer;
 
@@ -69,8 +72,11 @@ where
     }
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Initialize logging
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+
     // 1. Set up the TCP listener
     let addr = SocketAddr::from(([127, 0, 0, 1], 8443));
 
@@ -79,7 +85,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let incoming = TcpListenerStream::new(listener);
 
     // 2. Create the HTTP connection builder
-    let builder = HttpConnectionBuilder::new(TokioExecutor::new());
+    let mut builder = HttpConnectionBuilder::new(TokioExecutor::new());
+    builder
+        // HTTP/1 optimizations
+        .http1()
+        // Enable half-close for better connection handling
+        .half_close(true)
+        // Enable keep-alive to reduce overhead for multiple requests
+        .keep_alive(true)
+        // Increase max buffer size to 1MB for better performance with larger payloads
+        .max_buf_size(1024 * 1024)
+        // Enable immediate flushing of pipelined responses for lower latency
+        .pipeline_flush(true)
+        // Preserve original header case for compatibility
+        .preserve_header_case(true)
+        // Disable automatic title casing of headers to reduce processing overhead
+        .title_case_headers(false)
+        // HTTP/2 optimizations
+        .http2()
+        // Add the timer to the builder to avoid potential issues
+        .timer(TokioTimer::new())
+        // Increase initial stream window size to 4MB for better throughput
+        .initial_stream_window_size(Some(4 * 1024 * 1024))
+        // Increase initial connection window size to 8MB for improved performance
+        .initial_connection_window_size(Some(8 * 1024 * 1024))
+        // Enable adaptive window for dynamic flow control
+        .adaptive_window(true)
+        // Increase max frame size to 1MB for larger data chunks
+        .max_frame_size(Some(1024 * 1024))
+        // Allow up to 1024 concurrent streams for better parallelism without overwhelming the connection
+        .max_concurrent_streams(Some(1024))
+        // Increase max send buffer size to 4MB for improved write performance
+        .max_send_buf_size(4 * 1024 * 1024)
+        // Enable CONNECT protocol support for proxying and tunneling
+        .enable_connect_protocol()
+        // Increase max header list size to 64KB to handle larger headers
+        .max_header_list_size(64 * 1024)
+        // Set keep-alive interval to 30 seconds for more responsive connection management
+        .keep_alive_interval(Some(Duration::from_secs(30)))
+        // Set keep-alive timeout to 60 seconds to balance connection reuse and resource conservation
+        .keep_alive_timeout(Duration::from_secs(60));
 
     // 3. Set up the Tower service with middleware
     let svc = tower::service_fn(hello);
@@ -107,7 +152,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let tls_config = Arc::new(config);
 
     // 6. Set up graceful shutdown
-    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+    let (shutdown_tx, _shutdown_rx) = tokio::sync::oneshot::channel::<()>();
 
     // Spawn a task to send the shutdown signal after 1 second
     tokio::spawn(async move {
@@ -116,19 +161,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         debug!("Shutdown signal sent");
     });
 
-    // 7. Start the server
-    info!("Starting HTTPS server...");
-    serve_http_with_shutdown(
-        svc,
-        incoming,
-        builder,
-        Some(tls_config),
-        Some(async {
-            shutdown_rx.await.ok();
-            info!("Shutdown signal received, starting graceful shutdown");
-        }),
-    )
-    .await?;
+    // 7. Create a shutdown signal
+    let (shutdown_tx, _shutdown_rx) = tokio::sync::oneshot::channel();
+
+    // 8. Start the server
+    let server = tokio::spawn(async move {
+        info!("Starting HTTPS server...");
+        serve_http_with_shutdown(
+            svc,
+            incoming,
+            builder,
+            Some(tls_config),
+            Some(async {
+                _shutdown_rx.await.ok();
+                info!("Shutdown signal received");
+            }),
+        )
+        .await
+        .expect("Server failed unexpectedly");
+    });
+
+    // Keep the main thread running until Ctrl+C
+    tokio::signal::ctrl_c().await?;
+    info!("Initiating graceful shutdown");
+    let _ = shutdown_tx.send(());
+
+    // Wait for server to shutdown
+    server.await?;
 
     info!("Server has shut down");
     // Et voilà!

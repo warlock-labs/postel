@@ -36,6 +36,7 @@ use rustls::crypto::aws_lc_rs::Ticketer;
 use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 use rustls::server::ServerSessionMemoryCache;
 use rustls::{ClientConfig, RootCertStore, ServerConfig};
+use std::convert::Infallible;
 use tokio::net::TcpSocket;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
@@ -206,24 +207,69 @@ fn generate_shared_ecdsa_config() -> TlsConfig {
 fn create_optimized_runtime(thread_count: usize) -> io::Result<Runtime> {
     tokio::runtime::Builder::new_multi_thread()
         .worker_threads(thread_count)
-        .max_blocking_threads(thread_count * 2)
+        .max_blocking_threads(thread_count)
         .enable_all()
         .build()
 }
 
-#[inline]
-async fn echo(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::Error> {
-    match (req.method(), req.uri().path()) {
-        (&hyper::Method::GET, "/") => Ok(Response::new(Full::new(Bytes::from("Hello, World!")))),
-        (&hyper::Method::POST, "/echo") => {
-            let body = req.collect().await?.to_bytes();
-            Ok(Response::new(Full::new(body)))
+// Pre-allocate static responses
+const HELLO: &[u8] = b"Hello, World!";
+const NOT_FOUND: &[u8] = b"Not Found";
+
+const BASE_PATH: &str = "/";
+
+const ECHO_PATH: &str = "/echo";
+
+#[derive(Clone, Copy)]
+struct EchoService {
+    hello_response: &'static [u8],
+    not_found_response: &'static [u8],
+}
+
+impl EchoService {
+    const fn new() -> Self {
+        Self {
+            hello_response: HELLO,
+            not_found_response: NOT_FOUND,
         }
-        _ => {
-            let mut res = Response::new(Full::new(Bytes::from("Not Found")));
-            *res.status_mut() = StatusCode::NOT_FOUND;
-            Ok(res)
-        }
+    }
+}
+
+impl tower::Service<Request<Incoming>> for EchoService {
+    type Response = Response<Full<Bytes>>;
+    type Error = Infallible;
+    type Future = std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>,
+    >;
+
+    #[inline]
+    fn poll_ready(
+        &mut self,
+        _: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
+        std::task::Poll::Ready(Ok(()))
+    }
+
+    #[inline]
+    fn call(&mut self, req: Request<Incoming>) -> Self::Future {
+        let service = *self; // Copy the service since it's Copy
+        Box::pin(async move {
+            Ok(match (req.method(), req.uri().path()) {
+                (&hyper::Method::GET, BASE_PATH) => {
+                    Response::new(Full::new(Bytes::from_static(service.hello_response)))
+                }
+                (&hyper::Method::POST, ECHO_PATH) => {
+                    let body = req.collect().await.unwrap().to_bytes();
+                    Response::new(Full::new(body))
+                }
+                _ => {
+                    let mut res =
+                        Response::new(Full::new(Bytes::from_static(service.not_found_response)));
+                    *res.status_mut() = StatusCode::NOT_FOUND;
+                    res
+                }
+            })
+        })
     }
 }
 
@@ -255,9 +301,49 @@ async fn start_server(
     let tls_config = Arc::new(tls_config);
     let (incoming, server_addr) = setup_server().await?;
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
-    let http_server_builder = HttpConnectionBuilder::new(TokioExecutor::new());
+    let mut http_server_builder = HttpConnectionBuilder::new(TokioExecutor::new());
+    http_server_builder
+        // HTTP/1 optimizations
+        .http1()
+        // Enable half-close for better connection handling
+        .half_close(true)
+        // Enable keep-alive to reduce overhead for multiple requests
+        .keep_alive(true)
+        // Increase max buffer size to 1MB for better performance with larger payloads
+        .max_buf_size(1024 * 1024)
+        // Enable immediate flushing of pipelined responses for lower latency
+        .pipeline_flush(true)
+        // Preserve original header case for compatibility
+        .preserve_header_case(true)
+        // Disable automatic title casing of headers to reduce processing overhead
+        .title_case_headers(false)
+        // HTTP/2 optimizations
+        .http2()
+        // Add the timer to the builder to avoid potential issues
+        .timer(TokioTimer::new())
+        // Increase initial stream window size to 4MB for better throughput
+        .initial_stream_window_size(Some(4 * 1024 * 1024))
+        // Increase initial connection window size to 8MB for improved performance
+        .initial_connection_window_size(Some(8 * 1024 * 1024))
+        // Enable adaptive window for dynamic flow control
+        .adaptive_window(true)
+        // Increase max frame size to 1MB for larger data chunks
+        .max_frame_size(Some(1024 * 1024))
+        // Allow up to 1024 concurrent streams for better parallelism without overwhelming the connection
+        .max_concurrent_streams(Some(1024))
+        // Increase max send buffer size to 4MB for improved write performance
+        .max_send_buf_size(4 * 1024 * 1024)
+        // Enable CONNECT protocol support for proxying and tunneling
+        .enable_connect_protocol()
+        // Increase max header list size to 64KB to handle larger headers
+        .max_header_list_size(64 * 1024)
+        // Set keep-alive interval to 30 seconds for more responsive connection management
+        .keep_alive_interval(Some(Duration::from_secs(30)))
+        // Set keep-alive timeout to 60 seconds to balance connection reuse and resource conservation
+        .keep_alive_timeout(Duration::from_secs(60));
 
-    let tower_service_fn = tower::service_fn(echo);
+    let tower_service_fn = EchoService::new();
+
     let hyper_service = TowerToHyperService::new(tower_service_fn);
     tokio::spawn(async move {
         serve_http_with_shutdown(

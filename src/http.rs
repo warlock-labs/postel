@@ -10,7 +10,7 @@ use http_body::Body;
 use hyper::body::Incoming;
 use hyper::rt::{Read, Write};
 use hyper::service::Service;
-use hyper_util::rt::{TokioIo, TokioTimer};
+use hyper_util::rt::TokioIo;
 use hyper_util::server::conn::auto::{Builder as HttpConnectionBuilder, HttpServerConnExec};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::time::sleep;
@@ -54,7 +54,7 @@ where
     match tokio::task::spawn_blocking(move || {
         tokio::runtime::Handle::current().block_on(tls_acceptor.accept(io))
     })
-        .await
+    .await
     {
         Ok(Ok(stream)) => Ok(stream),
         // This connection was malformed and the server was unable to handle it
@@ -107,47 +107,6 @@ pub async fn serve_http_connection<B, IO, S, E>(
     // Configure connection lifetime monitoring
     let sleep = sleep_or_pending(max_connection_age);
     tokio::pin!(sleep);
-
-    let mut builder = builder.clone();
-    builder
-        // HTTP/1 optimizations
-        .http1()
-        // Enable half-close for better connection handling
-        .half_close(true)
-        // Enable keep-alive to reduce overhead for multiple requests
-        .keep_alive(true)
-        // Increase max buffer size to 1MB for better performance with larger payloads
-        .max_buf_size(1024 * 1024)
-        // Enable immediate flushing of pipelined responses for lower latency
-        .pipeline_flush(true)
-        // Preserve original header case for compatibility
-        .preserve_header_case(true)
-        // Disable automatic title casing of headers to reduce processing overhead
-        .title_case_headers(false)
-        // HTTP/2 optimizations
-        .http2()
-        // Add the timer to the builder to avoid potential issues
-        .timer(TokioTimer::new())
-        // Increase initial stream window size to 4MB for better throughput
-        .initial_stream_window_size(Some(4 * 1024 * 1024))
-        // Increase initial connection window size to 8MB for improved performance
-        .initial_connection_window_size(Some(8 * 1024 * 1024))
-        // Enable adaptive window for dynamic flow control
-        .adaptive_window(true)
-        // Increase max frame size to 1MB for larger data chunks
-        .max_frame_size(Some(1024 * 1024))
-        // Allow up to 250 concurrent streams for better parallelism without overwhelming the connection
-        .max_concurrent_streams(Some(250))
-        // Increase max send buffer size to 4MB for improved write performance
-        .max_send_buf_size(4 * 1024 * 1024)
-        // Enable CONNECT protocol support for proxying and tunneling
-        .enable_connect_protocol()
-        // Increase max header list size to 64KB to handle larger headers
-        .max_header_list_size(64 * 1024)
-        // Set keep-alive interval to 30 seconds for more responsive connection management
-        .keep_alive_interval(Some(Duration::from_secs(30)))
-        // Set keep-alive timeout to 60 seconds to balance connection reuse and resource conservation
-        .keep_alive_timeout(Duration::from_secs(60));
 
     // Create and pin the HTTP connection
     //
@@ -471,6 +430,7 @@ where
                 // Convert our abstracted tokio transport into a hyper transport
                 let hyper_io = TokioIo::new(transport);
 
+
                 // Create future for serving the connection
                 let conn_future = serve_http_connection(
                     hyper_io,
@@ -500,7 +460,7 @@ where
         );
 
         while !active_connections.is_empty() {
-            if let Some(_) = active_connections.next().await {
+            if active_connections.next().await.is_some() {
                 trace!("Connection closed during shutdown");
             }
         }
@@ -554,7 +514,7 @@ mod tests {
     // Helper for setting up test server
     async fn setup_test_server(
         // TODO this is not passed through in any meaningful way yet
-        _max_conn_age: Option<Duration>
+        _max_conn_age: Option<Duration>,
     ) -> (SocketAddr, oneshot::Sender<()>) {
         let addr = SocketAddr::from(([127, 0, 0, 1], 0));
         let listener = TcpListener::bind(addr).await.unwrap();
@@ -571,7 +531,9 @@ mod tests {
             incoming,
             builder,
             None,
-            Some(async { shutdown_rx.await.ok(); }),
+            Some(async {
+                shutdown_rx.await.ok();
+            }),
         ));
 
         (server_addr, shutdown_tx)
@@ -624,11 +586,12 @@ mod tests {
             let mut handles = Vec::new();
 
             for _ in 0..3 {
-                let addr = addr;
+                let socket_addr = addr;
                 let handle = tokio::spawn(async move {
-                    let stream = TcpStream::connect(addr).await.unwrap();
+                    let stream = TcpStream::connect(socket_addr).await.unwrap();
                     let io = TokioIo::new(stream);
-                    let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await.unwrap();
+                    let (mut sender, conn) =
+                        hyper::client::conn::http1::handshake(io).await.unwrap();
 
                     tokio::spawn(async move {
                         if let Err(err) = conn.await {
@@ -711,8 +674,8 @@ mod tests {
 
     mod https_tests {
         use super::*;
-        use crate::{load_certs, load_private_key};
         use crate::test::helper::RUSTLS;
+        use crate::{load_certs, load_private_key};
         use once_cell::sync::Lazy;
 
         async fn setup_test_tls_config() -> Arc<ServerConfig> {
@@ -757,7 +720,9 @@ mod tests {
                 incoming,
                 builder,
                 Some(tls_config.clone()),
-                Some(async { shutdown_rx.await.ok(); }),
+                Some(async {
+                    shutdown_rx.await.ok();
+                }),
             ));
 
             (server_addr, shutdown_tx, tls_config)
@@ -837,10 +802,10 @@ mod tests {
 
                 // Create multiple concurrent TLS connections
                 for _ in 0..5 {
-                    let addr = addr;
+                    let socket_addr = addr;
                     let handle = tokio::spawn(async move {
                         let (connector, domain) = setup_test_client().await;
-                        let mut sender = connect_tls_client(addr, connector, domain).await;
+                        let mut sender = connect_tls_client(socket_addr, connector, domain).await;
 
                         let req = Request::builder()
                             .uri("/")
