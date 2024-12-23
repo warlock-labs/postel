@@ -1,4 +1,4 @@
-# postel
+![logo](./postel.png)
 
 [![License](https://img.shields.io/crates/l/hyper-server)](https://choosealicense.com/licenses/mit/)
 [![Crates.io](https://img.shields.io/crates/v/hyper-server)](https://crates.io/crates/hyper-server)
