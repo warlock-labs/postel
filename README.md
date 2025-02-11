@@ -1,9 +1,9 @@
 ![logo](./postel.png)
 
-[![License](https://img.shields.io/crates/l/hyper-server)](https://choosealicense.com/licenses/mit/)
-[![Crates.io](https://img.shields.io/crates/v/hyper-server)](https://crates.io/crates/hyper-server)
-[![Docs](https://img.shields.io/crates/v/hyper-server?color=blue&label=docs)](https://docs.rs/hyper-server/)
-![CI](https://github.com/warlock-labs/hyper-server/actions/workflows/CI.yml/badge.svg)
+[![License](https://img.shields.io/crates/l/postel)](https://choosealicense.com/licenses/mit/)
+[![Crates.io](https://img.shields.io/crates/v/postel)](https://crates.io/crates/postel)
+[![Docs](https://img.shields.io/crates/v/postel?color=blue&label=docs)](https://docs.rs/postel/)
+![CI](https://github.com/warlock-labs/postel/actions/workflows/CI.yml/badge.svg)
 [![codecov](https://codecov.io/gh/warlock-labs/postel/branch/master/graph/badge.svg?token=kd22mPKFAL)](https://codecov.io/gh/warlock-labs/postel)
 
 A high-performance, modular server implementation built on [hyper], designed to
