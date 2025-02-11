@@ -31,6 +31,7 @@ use hyper_util::client::legacy::Client;
 use hyper_util::rt::{TokioExecutor, TokioTimer};
 use hyper_util::server::conn::auto::Builder as HttpConnectionBuilder;
 use hyper_util::service::TowerToHyperService;
+use pprof::criterion::{Output, PProfProfiler};
 use rcgen::{CertificateParams, DistinguishedName, KeyPair};
 use rustls::crypto::aws_lc_rs::Ticketer;
 use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
@@ -45,95 +46,6 @@ use tokio_stream::wrappers::TcpListenerStream;
 use tracing::info;
 
 use postel::serve_http_with_shutdown;
-
-/// Profiling module for generating flamegraphs during benchmarks
-///
-/// This module is only compiled when the "dev-profiling" feature is enabled.
-/// It provides a custom profiler that integrates with Criterion to generate
-/// flamegraphs for each benchmark run.
-#[cfg(feature = "dev-profiling")]
-mod profiling {
-    use std::fs::File;
-    use std::path::Path;
-
-    use criterion::profiler::Profiler;
-    use pprof::ProfilerGuard;
-
-    /// Custom profiler for generating flamegraphs
-    ///
-    /// This struct implements the `Profiler` trait from Criterion,
-    /// allowing it to be used as a custom profiler in benchmark runs.
-    pub struct FlamegraphProfiler<'a> {
-        /// Sampling frequency for the profiler (in Hz)
-        frequency: i32,
-        /// The active profiler instance, if profiling is currently in progress
-        active_profiler: Option<ProfilerGuard<'a>>,
-    }
-
-    impl FlamegraphProfiler<'_> {
-        /// Creates a new `FlamegraphProfiler` instance
-        ///
-        /// # Arguments
-        ///
-        /// * `frequency` - The sampling frequency for the profiler, in Hz
-        ///
-        /// # Returns
-        ///
-        /// A new `FlamegraphProfiler` instance
-        pub fn new(frequency: i32) -> Self {
-            FlamegraphProfiler {
-                frequency,
-                active_profiler: None,
-            }
-        }
-    }
-
-    impl Profiler for FlamegraphProfiler<'_> {
-        /// Starts profiling for a benchmark
-        ///
-        /// This method is called by Criterion at the start of each benchmark iteration.
-        /// It creates a new `ProfilerGuard` instance and stores it in `active_profiler`.
-        ///
-        /// # Arguments
-        ///
-        /// * `_benchmark_id` - The ID of the benchmark (unused in this implementation)
-        /// * `_benchmark_dir` - The directory for benchmark results (unused in this implementation)
-        fn start_profiling(&mut self, _benchmark_id: &str, _benchmark_dir: &Path) {
-            self.active_profiler = Some(ProfilerGuard::new(self.frequency).unwrap());
-        }
-
-        /// Stops profiling and generates a flamegraph
-        ///
-        /// This method is called by Criterion at the end of each benchmark iteration.
-        /// It generates a flamegraph from the collected profile data and saves it as an SVG file.
-        ///
-        /// # Arguments
-        ///
-        /// * `_benchmark_id` - The ID of the benchmark (unused in this implementation)
-        /// * `benchmark_dir` - The directory where the flamegraph should be saved
-        fn stop_profiling(&mut self, _benchmark_id: &str, benchmark_dir: &Path) {
-            // Ensure the benchmark directory exists
-            std::fs::create_dir_all(benchmark_dir).unwrap();
-
-            // Define the path for the flamegraph SVG file
-            let flamegraph_path = benchmark_dir.join("flamegraph.svg");
-
-            // Create the flamegraph file
-            let flamegraph_file = File::create(&flamegraph_path)
-                .expect("File system error while creating flamegraph.svg");
-
-            // Generate and write the flamegraph if a profiler is active
-            if let Some(profiler) = self.active_profiler.take() {
-                profiler
-                    .report()
-                    .build()
-                    .unwrap()
-                    .flamegraph(flamegraph_file)
-                    .expect("Error writing flamegraph");
-            }
-        }
-    }
-}
 
 /// Holds the TLS configuration for both server and client
 struct TlsConfig {
@@ -528,7 +440,7 @@ criterion_group! {
         .sample_size(10)
         .measurement_time(Duration::from_secs(30))
         .warm_up_time(Duration::from_secs(5))
-        .with_profiler(profiling::FlamegraphProfiler::new(100));
+        .with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)));
     targets = bench_server
 }
 

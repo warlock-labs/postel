@@ -21,7 +21,7 @@ http-body-util = "0.1.2"
 hyper = "1.5.2"
 hyper-util = { version = "0.1.10", features = ["server", "tokio", "server-auto", "server-graceful", "service", "http2"] }
 pin-project = "1.1.7"
-pprof = { version = "0.13.0", features = ["flamegraph"], optional = true }
+pprof = { version = "0.13.0", features = ["flamegraph", "criterion"], optional = true }
 ring = "0.17.8"
 rustls = { version = "0.23.20", features = ["zlib", "aws_lc_rs"] }
 rustls-pemfile = "2.2.0"
@@ -65,7 +65,7 @@ path = "examples/tonic.rs"
 
 [features]
 default = []
-dev-profiling = ["pprof"]
+dev-profiling = ["pprof", "pprof/criterion", "pprof/flamegraph"]
 
 [profile.release]
 debug = true
