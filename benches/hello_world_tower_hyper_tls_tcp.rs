@@ -142,11 +142,16 @@ fn generate_tls_config() -> TlsConfig {
     }
 }
 
-/// Creates an optimized Tokio runtime for benchmarking
-fn create_runtime(thread_count: usize) -> io::Result<Runtime> {
+fn create_runtime(available_cores: usize) -> io::Result<Runtime> {
+    let worker_threads = (available_cores * 4).min(2048);
+
+    let blocking_threads = available_cores.max(64);
+
     tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(thread_count)
-        .max_blocking_threads(thread_count)
+        .worker_threads(worker_threads)
+        .max_blocking_threads(blocking_threads)
+        .thread_keep_alive(Duration::from_secs(30))
+        .thread_stack_size(4 * 1024 * 1024)
         .enable_all()
         .build()
 }
@@ -415,8 +420,12 @@ async fn run_concurrent_requests(
 
 /// Main benchmark function that runs all tests
 fn bench_http2_server(c: &mut Criterion) {
+    let available_cores = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1);
+
     // Create server runtime with half of available CPU cores
-    let server_runtime = Arc::new(create_runtime(num_cpus::get() / 2).unwrap());
+    let server_runtime = Arc::new(create_runtime(available_cores / 2).unwrap());
 
     // Setup server and client
     let (server_addr, shutdown_tx, client) = server_runtime.block_on(async {
@@ -517,7 +526,7 @@ fn bench_http2_server(c: &mut Criterion) {
     group.bench_function("single_request_latency", |b| {
         let client = client.clone();
         let url = base_url.clone();
-        let client_runtime = create_runtime(num_cpus::get() / 2).unwrap();
+        let client_runtime = create_runtime(available_cores / 2).unwrap();
         b.to_async(client_runtime)
             .iter(|| async { send_get_request(&client, url.clone()).await.unwrap() });
     });
@@ -533,7 +542,7 @@ fn bench_http2_server(c: &mut Criterion) {
             |b, &num_requests| {
                 let client = client.clone();
                 let url = base_url.clone();
-                let client_runtime = create_runtime(num_cpus::get() / 2).unwrap();
+                let client_runtime = create_runtime(available_cores / 2).unwrap();
                 b.to_async(client_runtime).iter(|| async {
                     run_concurrent_requests(&client, url.clone(), num_requests).await
                 });
@@ -561,7 +570,7 @@ fn bench_http2_server(c: &mut Criterion) {
             |b, &size| {
                 let client = client.clone();
                 let url = echo_url.clone();
-                let client_runtime = create_runtime(num_cpus::get() / 2).unwrap();
+                let client_runtime = create_runtime(available_cores / 2).unwrap();
                 let payload = vec![0u8; size];
 
                 b.to_async(client_runtime).iter(|| async {
@@ -586,7 +595,7 @@ fn bench_http2_server(c: &mut Criterion) {
             |b, &concurrency| {
                 let client = client.clone();
                 let url = echo_url.clone();
-                let client_runtime = create_runtime(num_cpus::get() / 2).unwrap();
+                let client_runtime = create_runtime(available_cores / 2).unwrap();
                 let payload = vec![0u8; 16777216]; // 16MB baseline payload
 
                 b.to_async(client_runtime).iter(|| async {
