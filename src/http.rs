@@ -136,7 +136,6 @@ pub async fn serve_http_connection<B, IO, S, E>(
                 conn.as_mut().graceful_shutdown();
             }
         }
-        tokio::task::yield_now().await;
     }
 
     trace!("HTTP connection closed");
@@ -445,7 +444,6 @@ where
                 );
             },
         }
-        tokio::task::yield_now().await;
     }
 
     // Handle graceful shutdown
