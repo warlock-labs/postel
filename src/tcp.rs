@@ -16,9 +16,9 @@ use tokio_stream::{Stream, StreamExt};
 /// # Type Parameters
 ///
 /// * `IO`: The type of the I/O object yielded by the incoming stream,
-///           usually a tokio IO.
+///   usually a tokio IO.
 /// * `IE`: The type of the error that can be produced by the incoming stream,
-///           usually a Tokio error.
+///   usually a Tokio error.
 ///
 /// # Arguments
 ///

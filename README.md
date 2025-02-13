@@ -27,7 +27,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-postel = "0.7.0"
+postel = "0.7.2"
 ```
 
 ## Usage

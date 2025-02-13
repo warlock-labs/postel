@@ -23,7 +23,7 @@ use crate::Error as TransportError;
 /// * `IO`: The I/O type representing the underlying TCP connection. It must implement
 ///   `AsyncRead`, `AsyncWrite`, `Unpin`], `Send`, and have a static lifetime.
 /// * `IE`: The error type of the incoming TCP stream, which must be convertible to
-///           the crate's `TransportError`.
+///   the crate's `TransportError`.
 ///
 /// # Arguments
 ///
