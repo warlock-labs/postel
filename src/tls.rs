@@ -1,11 +1,10 @@
 use std::ops::ControlFlow;
 use std::pin::pin;
 use std::{fs, io};
-use std::sync::Arc;
+
 use futures::stream::StreamExt;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::task::JoinError;
 use tokio_rustls::TlsAcceptor;
 use tokio_stream::Stream;
 
@@ -78,31 +77,29 @@ where
     async_stream::stream! {
         // Pin the TCP stream to the stack so that it's available and not moved in the loop
         let mut tcp_stream = pin!(tcp_stream);
-        let tls = Arc::new(tls);
 
         while let Some(result) = tcp_stream.next().await {
             match result {
                 Ok(io) => {
-                    let tls = Arc::clone(&tls);
-
-                    // Spawn TLS handshake in a blocking task
-                    match tokio::task::spawn_blocking(move || {
-                        tokio::runtime::Handle::current().block_on(tls.accept(io))
-                    }).await {
-                        Ok(Ok(tls_stream)) => {
+                    // Attempt to perform the TLS handshake on the accepted TCP connection
+                    match tls.accept(io).await {
+                        Ok(tls_stream) => {
+                            // Successful TLS handshake, yield the encrypted stream
                             yield Ok(tls_stream)
                         },
-                        Ok(Err(e)) => {
+                        Err(e) => {
+                            // Handle TLS handshake errors
+                            // Convert the rustls error to a TransportError for consistent error handling
                             let transport_error = <io::Error as Into<TransportError>>::into(e);
                             match handle_accept_error(transport_error) {
-                                ControlFlow::Continue(()) => continue,
-                                ControlFlow::Break(e) => yield Err(e)
-                            }
-                        },
-                        Err(e) => {
-                            match handle_accept_error(<JoinError as Into<TransportError>>::into(e)) {
-                                ControlFlow::Continue(()) => continue,
-                                ControlFlow::Break(e) => yield Err(e)
+                                ControlFlow::Continue(()) => {
+                                    // Non-fatal error, skip this connection and continue to the next
+                                    continue;
+                                },
+                                ControlFlow::Break(e) => {
+                                    // Fatal error, yield the error and potentially end the stream
+                                    yield Err(e)
+                                }
                             }
                         }
                     }
