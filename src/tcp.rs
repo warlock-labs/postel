@@ -70,7 +70,18 @@ where
         while let Some(item) = incoming.next().await {
             match item {
                 // If the connection is successfully established, yield it
-                Ok(io) => yield Ok(io),
+                Ok(io) => {
+                    // Spawn a new task for each connection
+                    let handle = tokio::spawn(async move {
+                        Ok(io)
+                    });
+
+                    // Await the result from the spawned task
+                    match handle.await {
+                        Ok(result) => yield result,
+                        Err(e) => yield Err(e.into()),
+                    }
+                },
                 // Handle errors using the handle_accept_error function
                 Err(e) => match handle_accept_error(e.into()) {
                     // For non-fatal errors, continue to the next incoming
