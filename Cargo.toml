@@ -60,6 +60,10 @@ path = "examples/tower_service_fn.rs"
 name = "tonic"
 path = "examples/tonic.rs"
 
+[[example]]
+name = "stress_tls_http2"
+path = "examples/stress_tls_http2.rs"
+
 [features]
 default = []
 dev-profiling = ["pprof", "pprof/criterion", "pprof/flamegraph"]
