@@ -23,10 +23,10 @@ use tracing::debug;
 ///
 /// The function categorizes errors as follows:
 /// - Non-fatal errors:
-///  [`io::ErrorKind::ConnectionAborted`],
-///  [`io::ErrorKind::Interrupted`],
-///  [`io::ErrorKind::InvalidData`],
-///  [`io::ErrorKind::WouldBlock`]
+///   [`io::ErrorKind::ConnectionAborted`],
+///   [`io::ErrorKind::Interrupted`],
+///   [`io::ErrorKind::InvalidData`],
+///   [`io::ErrorKind::WouldBlock`]
 /// - Fatal errors: All other error types
 pub(crate) fn handle_accept_error(e: impl Into<TransportError>) -> ControlFlow<TransportError> {
     // Convert the input error into our crate's Error type
